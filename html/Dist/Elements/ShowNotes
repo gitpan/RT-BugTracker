@@ -1,0 +1,18 @@
+% if ( $Queue->Disabled ) {
+<h3><% loc('WARNING: Queue is disabled') %></h3>
+
+<p>This queue has been disabled by maintainers' request. Heh, it's still possible to create bugs using email address, but we <b>beg you</b> "don't create new tickets". Instead read distribution's documentation and figure out how to report issues properly.</p>
+% }
+
+% if ( defined $notes && length $notes ) {
+<h3><% loc("Maintainer(s)' notes") %></h3>
+
+<p><% $notes |n %></p>
+% }
+
+<%ARGS>
+$Queue
+</%ARGS>
+<%INIT>
+my $notes = $Queue->DistributionNotes;
+</%INIT>
