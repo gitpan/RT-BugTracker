@@ -52,7 +52,7 @@ use warnings;
 package RT::BugTracker;
 
 use 5.008003;
-our $VERSION = '0.05';
+our $VERSION = '5.0';
 
 =head1 NAME
 
@@ -60,12 +60,11 @@ RT::BugTracker - Adds a UI designed for bug-tracking for developers to RT
 
 =head1 DESCRIPTION
 
-This extension changes RT's UI to make more useful when you want to
-track bug reports in many distributions. This extension is a start
-for setups like L<http://rt.cpan.org>. It's been developed to help
-authors of perl modules.
+This extension changes RT's interface to be more useful when you want to track
+bug reports in many distributions. This extension is a start for setups like
+L<http://rt.cpan.org>. It's been developed to help authors of Perl modules.
 
-It follows several rules to achieve the goal:
+It follows two basic rules to achieve the goal:
 
 =over 4
 
@@ -74,16 +73,75 @@ It follows several rules to achieve the goal:
 =item Queue's AdminCc list is used for maintainers of the
 coresponding distribution.
 
-=item Not everything was possible to implement using callbacks
-and other clean extending methods, so some files have been
-overriden. We currently in sync with RT 3.6.6.
-
 =back
 
 =cut
 
+RT->AddStyleSheets("bugtracker.css");
+
 require RT::Queue;
 package RT::Queue;
+
+sub DistributionBugtracker {
+    return (shift)->_AttributeBasedField(
+        DistributionBugtracker => @_
+    );
+}
+
+
+sub SetDistributionBugtracker {
+    my ($self, $value) = (shift, shift);
+
+    my $bugtracker = {};
+    my $update = 0;
+
+    # Validate and set the mail to - we don't care if this is rt.cpan.org
+    if(defined($value->{mailto}) && !($value->{mailto} =~  m/rt\.cpan\.org/)) {
+        if(Email::Address->parse($value->{mailto})) {
+            $bugtracker->{mailto} = $value->{mailto};
+            $update = 1;
+        }
+    }
+
+    # Hash of supported URI schemes for validation
+    my $supported_schemes = {
+        http    => 1,
+        https   => 1,
+    };
+
+    # Validate and set the web - we don't care if this is rt.cpan.org
+    if(defined($value->{web}) && !($value->{web} =~ m/rt\.cpan\.org/)) {
+        if(my $uri = URI->new($value->{web})) {
+
+            # Check that this is a supported scheme
+            if(defined($supported_schemes->{$uri->scheme()})) {
+                $bugtracker->{web} = $value->{web};
+                $update = 1;
+            }
+
+            else {
+                my $error_msg = "Refused to set external bugtracker website";
+                $error_msg   .= " on distribution (" . $self->Name() .  ").";
+                $error_msg   .= " Unsupported scheme (" . $uri->scheme() . ").";
+                $RT::Logger->info($error_msg);
+            }
+        }
+        else {
+            my $error_msg = "Failed to set external bugtracker website";
+            $error_msg   .= " on distribution (" . $self->Name() .  ")";
+            $error_msg   .= " Unable to parse (" . $value->{web} . ") with URI.";
+            $RT::Logger->error($error_msg);
+        }
+    }
+
+    if($update) {
+        return $self->_SetAttributeBasedField( DistributionBugtracker => $bugtracker );
+    }
+
+    else {
+        return $self->_SetAttributeBasedField( DistributionBugtracker => undef );
+    }
+}
 
 sub DistributionNotes {
     return (shift)->_AttributeBasedField(
@@ -109,26 +167,30 @@ sub SetNotifyAddresses {
     );
 }
 
-# XXX: should go with 3.8 port
-sub SubjectTagRE {
-    return qr/[a-z0-9 ._-]/i;
-}
-sub SubjectTag {
-    return (shift)->_AttributeBasedField(
-        SubjectTag => @_
-    ) || '';
-}
+{ no warnings 'redefine';
 sub SetSubjectTag {
     my ($self, $value) = (shift, shift);
-    if ( defined $value ) {
-        my $re = $self->SubjectTagRE;
-        return (0, $self->loc("Invalid characters in SubjectTag"))
-            unless $value =~ /^$re*$/;
+    if ( defined $value and length $value ) {
+        $value =~ s/(^\s+|\s+$)//g;
+
+        unless ($value =~ /^\Q$RT::rtname\E\b/) {
+            # Prepend the $rtname before we get into the database so we don't
+            # have to munge it on the way out.
+            $value = "$RT::rtname $value";
+        }
+
+        # We just prepended the $rtname if necessary, so the full subject tag
+        # regex should match.  If it doesn't, the subject tag contains
+        # prohibited characters (or we have a bug, but catching that is good so
+        # we don't mishandle incoming mail).
+        my $re = RT->Config->Get("EmailSubjectTagRegex");
+        unless ($value =~ /^$re$/) {
+            RT->Logger->warning("Subject tag for queue @{[$self->Name]} contains prohibited characters: '$value'");
+            return (0, $self->loc("Subject tag contains prohibited characters"));
+        }
     }
-    return $self->_SetAttributeBasedField(
-        SubjectTag => $value, @_
-    );
-}
+    return $self->_Set( Field => 'SubjectTag', Value => $value );
+}}
 
 sub _AttributeBasedField {
     my $self = shift;
@@ -167,37 +229,23 @@ sub _SetAttributeBasedField {
     return ( 1, $self->loc("[_1] changed", $self->loc($name)) );
 }
 
-require RT::Action::SendEmail;
-package RT::Action::SendEmail;
-
-my $tag_re = RT::Queue->SubjectTagRE;
-$RT::EmailSubjectTagRegex = qr/\Q$RT::rtname\E(?:\s+$tag_re+)?/;
-
-my $old = \&SetSubjectToken;
-*RT::Action::SendEmail::SetSubjectToken = sub {
-    my $self = shift;
-    $old->($self, @_);
-
-    my $tag = $self->TicketObj->QueueObj->SubjectTag;
-    return unless defined $tag && length $tag;
-
-    my $id = $self->TicketObj->id;
-    my $head = $self->TemplateObj->MIMEObj->head;
-    my $subject = $head->get('Subject');
-    my $tmp = $subject;
-    $tmp =~ s{\[\Q$RT::rtname\E\s+#$id\]}{[$RT::rtname $tag #$id]}i;
-    return if $tmp eq $subject;
-
-    $head->replace( Subject => $tmp );
-};
-
 =head1 SEE ALSO
 
 L<RT::BugTracker::Public>, L<RT::Extension::rt_cpan_org>
 
 =head1 AUTHOR
 
+Thomas Sibley E<lt>trs@bestpractical.comE<gt>
+
+Ruslan Zaikarov E<lt>ruz@bestpractical.comE<gt>
+
+sunnavy E<lt>sunnavy@bestpractical.comE<gt>
+
 Kevin Riggle E<lt>kevinr@bestpractical.comE<gt>
+
+=head1 LICENSE
+
+GPL version 2.
 
 =cut
 
