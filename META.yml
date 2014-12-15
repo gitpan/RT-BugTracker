@@ -1,7 +1,7 @@
 ---
 abstract: 'Adds a UI designed for bug-tracking for developers to RT'
 author:
-  - 'Thomas Sibley <trs@bestpractical.com>'
+  - 'Best Practical Solutions, LLC <modules@bestpractical.com>'
 build_requires:
   ExtUtils::MakeMaker: 6.59
 configure_requires:
@@ -23,6 +23,7 @@ requires:
   perl: 5.8.3
 resources:
   license: http://opensource.org/licenses/gpl-license.php
-version: '5.0'
+version: '5.1'
 x_module_install_rtx_version: '0.36'
 x_requires_rt: 4.0.9
+x_rt_too_new: 4.2.0

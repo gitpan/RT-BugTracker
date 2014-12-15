@@ -1,40 +1,40 @@
 # BEGIN BPS TAGGED BLOCK {{{
-# 
+#
 # COPYRIGHT:
-#  
-# This software is Copyright (c) 1996-2008 Best Practical Solutions, LLC 
-#                                          <jesse@bestpractical.com>
-# 
+#
+# This software is Copyright (c) 1996-2014 Best Practical Solutions, LLC
+#                                          <sales@bestpractical.com>
+#
 # (Except where explicitly superseded by other copyright notices)
-# 
-# 
+#
+#
 # LICENSE:
-# 
+#
 # This work is made available to you under the terms of Version 2 of
 # the GNU General Public License. A copy of that license should have
 # been provided with this software, but in any event can be snarfed
 # from www.gnu.org.
-# 
+#
 # This work is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301 or visit their web page on the internet at
-# http://www.gnu.org/copyleft/gpl.html.
-# 
-# 
+# http://www.gnu.org/licenses/old-licenses/gpl-2.0.html.
+#
+#
 # CONTRIBUTION SUBMISSION POLICY:
-# 
+#
 # (The following paragraph is not intended to limit the rights granted
 # to you to modify and distribute this software under the terms of
 # the GNU General Public License and is only of importance to you if
 # you choose to contribute your changes and enhancements to the
 # community by submitting them to Best Practical Solutions, LLC.)
-# 
+#
 # By intentionally submitting any modifications, corrections or
 # derivatives to this work, or any other work intended for use with
 # Request Tracker, to Best Practical Solutions, LLC, you confirm that
@@ -43,7 +43,7 @@
 # royalty-free, perpetual, license to use, copy, create derivative
 # works based on those contributions, and sublicense and distribute
 # those contributions and any derivatives thereof.
-# 
+#
 # END BPS TAGGED BLOCK }}}
 
 use strict;
@@ -52,7 +52,7 @@ use warnings;
 package RT::BugTracker;
 
 use 5.008003;
-our $VERSION = '5.0';
+our $VERSION = '5.1';
 
 =head1 NAME
 
@@ -229,23 +229,69 @@ sub _SetAttributeBasedField {
     return ( 1, $self->loc("[_1] changed", $self->loc($name)) );
 }
 
+=head1 INSTALLATION
+
+=over
+
+=item C<perl Makefile.PL>
+
+=item C<make>
+
+=item C<make install>
+
+May need root permissions
+
+=item C<make initdb>
+
+Only run this the first time you install this module.
+
+If you run this twice, you may end up with duplicate data
+in your database.
+
+If you are upgrading this module, check for upgrading instructions
+in case changes need to be made to your database.
+
+=item Edit your F</opt/rt4/etc/RT_SiteConfig.pm>
+
+Add this line:
+
+    Set(@Plugins, qw(RT::BugTracker));
+
+or add C<RT::BugTracker> to your existing C<@Plugins> line.
+
+=item Clear your mason cache
+
+    rm -rf /opt/rt4/var/mason_data/obj
+
+=item Restart your webserver
+
+=back
+
 =head1 SEE ALSO
 
 L<RT::BugTracker::Public>, L<RT::Extension::rt_cpan_org>
 
 =head1 AUTHOR
 
-Thomas Sibley E<lt>trs@bestpractical.comE<gt>
+Best Practical Solutions, LLC E<lt>modules@bestpractical.comE<gt>
 
-Ruslan Zaikarov E<lt>ruz@bestpractical.comE<gt>
+=head1 BUGS
 
-sunnavy E<lt>sunnavy@bestpractical.comE<gt>
+All bugs should be reported via email to
 
-Kevin Riggle E<lt>kevinr@bestpractical.comE<gt>
+    L<bug-RT-BugTracker@rt.cpan.org|mailto:bug-RT-BugTracker@rt.cpan.org>
 
-=head1 LICENSE
+or via the web at
 
-GPL version 2.
+    L<rt.cpan.org|http://rt.cpan.org/Public/Dist/Display.html?Name=RT-BugTracker>.
+
+=head1 LICENSE AND COPYRIGHT
+
+This software is Copyright (c) 2014 by Best Practical Solutions
+
+This is free software, licensed under:
+
+  The GNU General Public License, Version 2, June 1991
 
 =cut
 
