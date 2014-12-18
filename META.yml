@@ -19,11 +19,14 @@ no_index:
     - etc
     - html
     - inc
+  package:
+    - RT::Queue
 requires:
   perl: 5.8.3
 resources:
   license: http://opensource.org/licenses/gpl-license.php
-version: '5.1'
+  repository: https://github.com/bestpractical/rt-bugtracker
+version: '5.2'
 x_module_install_rtx_version: '0.36'
 x_requires_rt: 4.0.9
 x_rt_too_new: 4.2.0
